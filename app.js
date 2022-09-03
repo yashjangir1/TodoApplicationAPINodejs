@@ -67,7 +67,7 @@ app.get("/todos/", async (request, response) => {
       response.send("Invalid Todo Category");
     } else {
       query1 = `
-                SELECT 
+                SELECT
                     *
                 FROM
                     todo
@@ -89,7 +89,7 @@ app.get("/todos/", async (request, response) => {
       response.send("Invalid Todo Priority");
     } else {
       query1 = `
-                SELECT 
+                SELECT
                     *
                 FROM
                     todo
@@ -109,7 +109,7 @@ app.get("/todos/", async (request, response) => {
       response.send("Invalid Todo Category");
     } else {
       query1 = `
-                SELECT 
+                SELECT
                     *
                 FROM
                     todo
@@ -130,7 +130,7 @@ app.get("/todos/", async (request, response) => {
       response.send("Invalid Todo Category");
     } else {
       query1 = `
-                SELECT 
+                SELECT
                     *
                 FROM
                     todo
@@ -148,7 +148,7 @@ app.get("/todos/", async (request, response) => {
       response.send("Invalid Todo Status");
     } else {
       query1 = `
-                SELECT 
+                SELECT
                     *
                 FROM
                     todo
@@ -165,7 +165,7 @@ app.get("/todos/", async (request, response) => {
       response.send("Invalid Todo Category");
     } else {
       query1 = `
-            SELECT 
+            SELECT
                 *
             FROM
                 todo
@@ -182,7 +182,7 @@ app.get("/todos/", async (request, response) => {
       response.send("Invalid Todo Priority");
     } else {
       query1 = `
-                SELECT 
+                SELECT
                     *
                 FROM
                     todo
@@ -195,7 +195,7 @@ app.get("/todos/", async (request, response) => {
     }
   } else {
     query1 = `
-        SELECT 
+        SELECT
             *
         FROM
             todo
@@ -213,12 +213,12 @@ app.get("/todos/:todoId/", async (request, response) => {
   const { todoId } = request.params;
 
   const query2 = `
-      SELECT
-         *
-      FROM
-        todo
-      WHERE 
-        todo.id = ${todoId};
+            SELECT
+                *
+            FROM
+                todo
+            WHERE
+                todo.id = ${todoId};
     `;
 
   const task = await db.get(query2);
@@ -231,36 +231,37 @@ app.get("/agenda/", async (request, response) => {
   const { date } = request.query;
 
   let query3 = "";
+  if (date === undefined) {
+    query3 = `
+        SELECT 
+           *
+        FROM
+          todo;
+     `;
 
-  if (dateFns.isValid(dateFns.parse(date, "yyyy-M-d", new Date()))) {
-    if (date !== undefined) {
+    const agendaArr = await db.all(query3);
+    response.send(agendaArr.map((agenda) => formatResult(agenda)));
+  } else {
+    if (dateFns.isValid(dateFns.parse(date, "yyyy-M-d", new Date()))) {
       const formattedDate = dateFns.format(
         dateFns.parse(date, "yyyy-M-d", new Date()),
         "yyyy-MM-dd"
       );
       query3 = `
-              SELECT 
-                 *
-              FROM 
+            SELECT
+                *
+            FROM
                 todo
-              WHERE
+            WHERE
                 due_date = '${formattedDate}';
-            `;
+        `;
+      const agendaArr = await db.all(query3);
+      response.send(agendaArr.map((agenda) => formatResult(agenda)));
     } else {
-      query3 = `
-              SELECT 
-                 *
-              FROM 
-                todo;
-            `;
+      response.status(400);
+      response.send("Invalid Due Date");
     }
-  } else {
-    response.status(400);
-    response.send("Invalid Due Date");
   }
-
-  const agendaArr = await db.all(query3);
-  response.send(agendaArr.map((agenda) => formatResult(agenda)));
 });
 
 /************************* API 4 ************************/
@@ -272,38 +273,43 @@ app.post("/todos/", async (request, response) => {
   const priorityPossibleValues = ["HIGH", "MEDIUM", "LOW"];
   const categoryPossibleValues = ["WORK", "HOME", "LEARNING"];
 
-  if (!statusPossibleValues.includes(status)) {
+  if (statusPossibleValues.includes(status)) {
+    if (priorityPossibleValues.includes(priority)) {
+      if (categoryPossibleValues.includes(category)) {
+        if (
+          dateFns.isMatch(dueDate, "yyyy-MM-dd") ||
+          dateFns.isMatch(dueDate, "yyyy-M-d")
+        ) {
+          const query4 = `
+                     INSERT INTO
+                        todo (id, todo, priority, status, category, due_date)
+                     VALUES(
+                         ${id},
+                         '${todo}',
+                         '${priority}',
+                         '${status}',
+                         '${category}',
+                       '${dateFns.format(new Date(dueDate), "yyyy-MM-dd")}'
+                     );
+                  `;
+
+          await db.run(query4);
+          response.send("Todo Successfully Added");
+        } else {
+          response.status(400);
+          response.send("Invalid Due Date");
+        }
+      } else {
+        response.status(400);
+        response.send("Invalid Todo Category");
+      }
+    } else {
+      response.status(400);
+      response.send("Invalid Todo Priority");
+    }
+  } else {
     response.status(400);
     response.send("Invalid Todo Status");
-  } else if (!priorityPossibleValues.includes(priority)) {
-    response.status(400);
-    response.send("Invalid Todo Priority");
-  } else if (!categoryPossibleValues.includes(category)) {
-    response.status(400);
-    response.send("Invalid Todo Category");
-  } else if (
-    !(
-      dateFns.isMatch(dueDate, "yyyy-MM-dd") ||
-      dateFns.isMatch(dueDate, "yyyy-M-d")
-    )
-  ) {
-    response.status(400);
-    response.send("Invalid Due Date");
-  } else {
-    const query4 = `
-            INSERT INTO
-              todo (id, todo, priority, status, category, due_date)
-            VALUES(
-              ${id},
-              '${todo}',
-              '${priority}',
-              '${status}',
-              '${category}',
-              '${dateFns.format(new Date(dueDate), "yyyy-MM-dd")}'
-              );
-          `;
-    await db.run(query4);
-    response.send("Todo Successfully Added");
   }
 });
 
@@ -323,7 +329,7 @@ app.put("/todos/:todoId/", async (request, response) => {
       response.send("Invalid Todo Status");
     } else {
       const query5 = `
-               UPDATE 
+               UPDATE
                   todo
                SET
                  status = "${status}"
@@ -342,7 +348,7 @@ app.put("/todos/:todoId/", async (request, response) => {
       response.send("Invalid Todo Priority");
     } else {
       const query5 = `
-               UPDATE 
+               UPDATE
                   todo
                SET
                  priority = "${priority}"
@@ -361,7 +367,7 @@ app.put("/todos/:todoId/", async (request, response) => {
       response.send("Invalid Todo Category");
     } else {
       const query5 = `
-               UPDATE 
+               UPDATE
                   todo
                SET
                  category = "${category}"
@@ -376,7 +382,7 @@ app.put("/todos/:todoId/", async (request, response) => {
 
   if (todo !== undefined) {
     const query5 = `
-            UPDATE 
+            UPDATE
                 todo
             SET
                 todo = "${todo}"
@@ -394,7 +400,7 @@ app.put("/todos/:todoId/", async (request, response) => {
       dateFns.isMatch(dueDate, "yyyy-M-d")
     ) {
       const query5 = `
-            UPDATE 
+            UPDATE
                 todo
             SET
                 due_date = '${dateFns.format(new Date(dueDate), "yyyy-MM-dd")}'
